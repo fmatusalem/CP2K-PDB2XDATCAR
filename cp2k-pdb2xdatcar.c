@@ -1,7 +1,6 @@
 /*BY FILIPE MATUSALEM, AUG 2020     filipematus@gmail.com */
 /*Program to convert CP2K PDB trajectory file to VASP XDATCAR format*/
 /*Compilation: g++ -o cp2k-pdb2xdatcar cp2k-pdb2xdatcar.c*/
-/*Usage: ./cp2k-pdb2xdatcar cp2k-pdb-file_withou_extension*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -28,7 +27,7 @@ printf("EE        RRRR       RRRR       OO   OO   RRRR\n");
 printf("EE        RR  RR     RR  RR     OO   OO   RR  RR\n");
 printf("EEEEEEE   RR    RR   RR    RR   OOOOOOO   RR    RR\n\n");
 
-printf("Enter the name of the cp2k trajectory pdb file (without .pdb)\n\n");
+printf("Enter the name of the cp2k trajectory pdb file \n\n");
 
  exit(0);}
 
@@ -38,25 +37,11 @@ printf("------------------------------------------------------------------------
 
 
 strcpy(str1,argv[1]);
-sprintf(str, ".pdb");
-strcat(str1,str);
 
 pdb = fopen(str1,"r"); /* Arquivo ASCII, para leitura */
 if(!pdb)
 {
 printf( "Error opening argument 1 file\n");
-exit(0);
-}
-
-strcpy(str1,argv[1]);
-sprintf(str, ".xyz");
-strcat(str1,str);
-
-
-xyz = fopen(str1,"w"); /* Arquivo ASCII, para escrita */
-if(!xyz)
-{
-printf( "Error creating xdatcar file\n");
 exit(0);
 }
 
@@ -131,7 +116,7 @@ if(strcmp(str1,"CRYST1")==0)nsteps++;
 printf("No. steps = %d\n",nsteps);
 rewind(pdb);
 
-float M[3][3],n;
+float M[3][3],V;
 
 
 for(i=0;i<nsteps;i++){
@@ -151,17 +136,28 @@ alpha=PI*alpha/180;
 beta=PI*beta/180;
 gamma=PI*gamma/180;
 
-n=(cos(alpha)-cos(beta)*cos(gamma))/sin(gamma);
+//conversion from fractional coordinates system to cartesian
+//http://www.ruppweb.org/Xray/tutorial/Coordinate%20system%20transformation.htm
+
+V=a*b*c*sqrt(1-cos(alpha)*cos(alpha)-cos(beta)*cos(beta)-cos(gamma)*cos(gamma)+2*cos(alpha)*cos(beta)*cos(gamma));
+
+//transformation matrix M
 
 M[0][0]=a;
-M[0][1]=0;
-M[0][2]=0;
-M[1][0]=b*cos(gamma);
+M[0][1]=b*cos(gamma);
+M[0][2]=c*cos(beta);
+
+M[1][0]=0;
 M[1][1]=b*sin(gamma);
-M[1][2]=0;
-M[2][0]=c*cos(beta);
-M[2][1]=c*n;
-M[2][2]=c*sqrt(pow(sin(beta),2)-pow(n,2));
+M[1][2]=c*(cos(alpha)-cos(beta)*cos(gamma))/sin(gamma);
+
+M[2][0]=0;
+M[2][1]=0;
+M[2][2]=V/(a*b*sin(gamma));
+
+//Vector_x = M * (1 0 0)^t
+//Vector_y = M * (0 1 0)^t
+//Vector_z = M * (0 0 1)^t
 
 for(j=0;j<3;j++){
 vecx[j]=M[j][0]*1+M[j][1]*0+M[j][2]*0;
@@ -212,6 +208,5 @@ printf("------------------------------------------------------------------------
 
 
 fclose(pdb);
-fclose(xyz);
 fclose(xdatcar);
 }
